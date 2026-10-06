@@ -110,6 +110,21 @@ curl http://127.0.0.1:8787/health
 
 Compose chỉ publish API tại `127.0.0.1:8787`. Không mở port 8787 trong UFW; Nginx sẽ nhận HTTPS trên port 443 và reverse proxy vào địa chỉ nội bộ này.
 
+Cài virtual host Nginx sau khi container healthy:
+
+```bash
+install -m 644 deploy/nginx-confirm.forgedride.co.conf /etc/nginx/sites-available/confirm.forgedride.co
+ln -s /etc/nginx/sites-available/confirm.forgedride.co /etc/nginx/sites-enabled/confirm.forgedride.co
+nginx -t
+systemctl reload nginx
+```
+
+Sau khi DNS `confirm.forgedride.co` đã trỏ về VPS và phân giải đúng, cấp TLS:
+
+```bash
+certbot --nginx -d confirm.forgedride.co
+```
+
 ## Lưu ý quyền riêng tư và độ chính xác
 
 IP là dữ liệu cá nhân ở nhiều khu vực pháp lý và GeoIP chỉ cho vị trí gần đúng. Nội dung test dùng một checkbox minh bạch; trước khi dùng production, hãy cập nhật privacy policy, mục đích xử lý, thời hạn lưu và cơ sở pháp lý phù hợp nơi bạn bán hàng. Không nên coi việc khách bấm một link không có thông báo là đồng ý marketing.
