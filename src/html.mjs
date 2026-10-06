@@ -2,16 +2,18 @@ const NOTICE_VERSION = '2026-10-05-v1';
 
 export { NOTICE_VERSION };
 
-export function confirmationPage({ token, orderId, alreadyConfirmed = false, error = '' }) {
-  const safeToken = escapeHtml(token);
-  const safeOrder = escapeHtml(orderId);
+export function confirmationPage({ hiddenFields, orderLabel, alreadyConfirmed = false, error = '' }) {
+  const safeOrder = escapeHtml(orderLabel);
+  const hiddenInputs = Object.entries(hiddenFields)
+    .map(([name, value]) => `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}">`)
+    .join('');
   const content = alreadyConfirmed
     ? `<h1>Đơn hàng đã được xác nhận</h1><p>Mã đơn: <strong>${safeOrder}</strong></p><p>Bạn có thể đóng trang này.</p>`
     : `<h1>Xác nhận đơn hàng</h1>
        <p>Mã đơn: <strong>${safeOrder}</strong></p>
        ${error ? `<p class="error">${escapeHtml(error)}</p>` : ''}
        <form method="post" action="/order-confirm">
-         <input type="hidden" name="t" value="${safeToken}">
+         ${hiddenInputs}
          <label class="consent"><input type="checkbox" name="consent" value="yes" required> Tôi đồng ý để cửa hàng ghi nhận địa chỉ IP, thời gian xác nhận và vị trí gần đúng suy ra từ IP cho mục đích phân tích khu vực khách hàng.</label>
          <button type="submit">Xác nhận đơn hàng</button>
        </form>`;

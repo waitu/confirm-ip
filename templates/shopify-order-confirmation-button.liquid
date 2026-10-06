@@ -1,0 +1,21 @@
+{%- assign confirm_ts = created_at | date: "%s" -%}
+{%- capture confirm_payload -%}{{ id }}|{{ confirm_ts }}|{{ name }}{%- endcapture -%}
+{%- assign confirm_sig = confirm_payload | hmac_sha256: "REPLACE_WITH_SHOPIFY_LINK_SECRET" -%}
+
+<table class="row actions">
+  <tr>
+    <td class="actions__cell">
+      <table class="button main-action-cell">
+        <tr>
+          <td class="button__cell">
+            <a href="https://confirm.forgedride.co/order-confirm?order_id={{ id }}&amp;order_name={{ name | url_encode }}&amp;ts={{ confirm_ts }}&amp;sig={{ confirm_sig }}"
+               class="button__text">Confirm my order</a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin-top:16px;font-size:12px;line-height:1.5;color:#777;">
+        The confirmation page explains which technical data is recorded and asks for your consent before confirming.
+      </p>
+    </td>
+  </tr>
+</table>

@@ -4,6 +4,7 @@ import { loadEnvFile, getConfig } from './env.mjs';
 import { getClientIp } from './ip.mjs';
 import { ConfirmationStore } from './store.mjs';
 import { confirmationPage, errorPage, NOTICE_VERSION } from './html.mjs';
+import { verifyOrderLink } from './signature.mjs';
 
 loadEnvFile();
 const config = getConfig();
@@ -42,33 +43,39 @@ const server = createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && url.pathname === '/order-confirm') {
-      const token = url.searchParams.get('t') || '';
-      const entry = store.lookup(token);
-      if (!entry) return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn hoặc không tồn tại.'));
+      const confirmation = resolveConfirmation(Object.fromEntries(url.searchParams));
+      if (!confirmation) return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn, bị thay đổi hoặc không tồn tại.'));
       return sendHtml(res, 200, confirmationPage({
-        token,
-        orderId: entry.order_id,
-        alreadyConfirmed: entry.status === 'confirmed'
+        hiddenFields: confirmation.hiddenFields,
+        orderLabel: confirmation.orderLabel,
+        alreadyConfirmed: confirmation.alreadyConfirmed
       }));
     }
 
     if (req.method === 'POST' && url.pathname === '/order-confirm') {
       const body = await readBody(req, 'form');
-      const token = body.t || '';
-      const entry = store.lookup(token);
-      if (!entry) return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn hoặc không tồn tại.'));
+      const confirmation = resolveConfirmation(body);
+      if (!confirmation) return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn, bị thay đổi hoặc không tồn tại.'));
       if (body.consent !== 'yes') {
         return sendHtml(res, 400, confirmationPage({
-          token,
-          orderId: entry.order_id,
+          hiddenFields: confirmation.hiddenFields,
+          orderLabel: confirmation.orderLabel,
           error: 'Bạn cần đồng ý trước khi xác nhận.'
         }));
       }
-      const result = await store.confirm(token, {
+      const details = {
         ip: getClientIp(req, config.trustProxy),
         userAgent: String(req.headers['user-agent'] || '').slice(0, 500),
         noticeVersion: NOTICE_VERSION
-      });
+      };
+      const result = confirmation.type === 'opaque'
+        ? await store.confirm(confirmation.token, details)
+        : await store.confirmSigned(
+            confirmation.signed,
+            details,
+            config.redirectUrl,
+            config.signedLinkTtlMs
+          );
       if (result.status === 'invalid') return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn hoặc không tồn tại.'));
       res.writeHead(303, { Location: result.entry.redirect_url, 'Cache-Control': 'no-store' });
       return res.end();
@@ -94,6 +101,45 @@ function isAdmin(req) {
   const supplied = Buffer.from(String(req.headers['x-admin-key'] || ''));
   const expected = Buffer.from(config.adminApiKey);
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function resolveConfirmation(input) {
+  if (input.t) {
+    const token = String(input.t);
+    const entry = store.lookup(token);
+    if (!entry) return undefined;
+    return {
+      type: 'opaque',
+      token,
+      hiddenFields: { t: token },
+      orderLabel: entry.order_id,
+      alreadyConfirmed: entry.status === 'confirmed'
+    };
+  }
+
+  const signed = verifyOrderLink({
+    orderId: input.order_id,
+    orderName: input.order_name,
+    timestamp: input.ts,
+    signature: input.sig
+  }, {
+    secret: config.shopifyLinkSecret,
+    ttlMs: config.signedLinkTtlMs
+  });
+  if (!signed) return undefined;
+  const existing = store.lookupSigned(signed.signature);
+  return {
+    type: 'signed',
+    signed,
+    hiddenFields: {
+      order_id: signed.orderId,
+      order_name: signed.orderName,
+      ts: String(signed.timestamp),
+      sig: signed.signature
+    },
+    orderLabel: signed.orderName,
+    alreadyConfirmed: existing?.status === 'confirmed'
+  };
 }
 
 function cleanOrderId(value) {

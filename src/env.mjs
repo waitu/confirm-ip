@@ -28,10 +28,15 @@ export function getConfig() {
   const retentionDays = parsePositiveInt(process.env.RETENTION_DAYS, 90);
   const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
   const adminApiKey = process.env.ADMIN_API_KEY;
+  const shopifyLinkSecret = process.env.SHOPIFY_LINK_SECRET;
   const redirectUrl = process.env.STORE_REDIRECT_URL || 'https://example.myshopify.com/';
+  const signedLinkTtlDays = parsePositiveInt(process.env.SIGNED_LINK_TTL_DAYS, 30);
 
   if (!adminApiKey || adminApiKey.length < 24) {
     throw new Error('ADMIN_API_KEY phải có ít nhất 24 ký tự. Chạy run-test.ps1 để tự tạo.');
+  }
+  if (!shopifyLinkSecret || shopifyLinkSecret.length < 32) {
+    throw new Error('SHOPIFY_LINK_SECRET phải có ít nhất 32 ký tự. Chạy run-test.ps1 để tự tạo.');
   }
 
   assertHttpUrl(baseUrl, 'BASE_URL');
@@ -41,8 +46,10 @@ export function getConfig() {
     port,
     baseUrl: baseUrl.replace(/\/$/, ''),
     adminApiKey,
+    shopifyLinkSecret,
     redirectUrl,
     tokenTtlMs: tokenTtlHours * 60 * 60 * 1000,
+    signedLinkTtlMs: signedLinkTtlDays * 24 * 60 * 60 * 1000,
     retentionMs: retentionDays * 24 * 60 * 60 * 1000,
     trustProxy: /^true$/i.test(process.env.TRUST_PROXY || ''),
     dataFile: resolve(process.env.DATA_FILE || './data/store.json')

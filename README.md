@@ -2,6 +2,8 @@
 
 Bản thử nghiệm không cần cài package. API tạo một token ngẫu nhiên, chỉ lưu SHA-256 của token, hiển thị trang xin xác nhận rõ ràng và chỉ ghi IP khi khách gửi form `POST`.
 
+Production hỗ trợ link HMAC do Shopify Liquid tự tạo từ `id`, `created_at` và `name`. Backend kiểm tra chữ ký và thời hạn trước khi hiển thị hoặc ghi nhận xác nhận; thay đổi bất kỳ tham số nào đều làm link vô hiệu.
+
 ## Chạy thử trên máy
 
 Yêu cầu: Node.js 20 trở lên và PowerShell.
@@ -36,6 +38,12 @@ Chạy test tự động:
 
 ```powershell
 node --test
+```
+
+Tạo một link HMAC giống link Shopify Liquid để thử thủ công:
+
+```powershell
+node .\scripts\create-shopify-test-link.mjs --order-id 1234567890 --order-name '#TEST-1001'
 ```
 
 ## API
@@ -93,8 +101,10 @@ Các giá trị production chính:
 PORT=8787
 BASE_URL=https://confirm.forgedride.co
 ADMIN_API_KEY=mot-khoa-ngau-nhien-toi-thieu-32-byte
+SHOPIFY_LINK_SECRET=mot-khoa-hmac-khac-toi-thieu-32-byte
 STORE_REDIRECT_URL=https://forgedride.co/
 TOKEN_TTL_HOURS=168
+SIGNED_LINK_TTL_DAYS=30
 RETENTION_DAYS=90
 TRUST_PROXY=true
 DATA_FILE=/app/data/store.json

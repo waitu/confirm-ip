@@ -48,6 +48,11 @@ export class ConfirmationStore {
     return structuredClone(entry);
   }
 
+  lookupSigned(signature) {
+    const entry = this.data.tokens[signedKey(signature)];
+    return entry ? structuredClone(entry) : undefined;
+  }
+
   async confirm(rawToken, details) {
     if (!isPlausibleToken(rawToken)) return { status: 'invalid' };
     const tokenHash = hashToken(rawToken);
@@ -65,6 +70,33 @@ export class ConfirmationStore {
         consent: true,
         notice_version: details.noticeVersion
       });
+      return { status: 'confirmed', entry: structuredClone(entry) };
+    });
+  }
+
+  async confirmSigned(signed, details, redirectUrl, ttlMs) {
+    const key = signedKey(signed.signature);
+    return this.mutate(() => {
+      const existing = this.data.tokens[key];
+      if (existing?.status === 'confirmed') {
+        return { status: 'already_confirmed', entry: structuredClone(existing) };
+      }
+      const createdAt = new Date(signed.timestamp * 1000);
+      const entry = {
+        order_id: signed.orderId,
+        order_name: signed.orderName,
+        created_at: createdAt.toISOString(),
+        expires_at: new Date(createdAt.getTime() + ttlMs).toISOString(),
+        redirect_url: redirectUrl,
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString(),
+        ip: details.ip,
+        user_agent: details.userAgent,
+        consent: true,
+        notice_version: details.noticeVersion,
+        link_type: 'shopify_hmac'
+      };
+      this.data.tokens[key] = entry;
       return { status: 'confirmed', entry: structuredClone(entry) };
     });
   }
@@ -104,6 +136,10 @@ export class ConfirmationStore {
 
 export function hashToken(token) {
   return createHash('sha256').update(token).digest('hex');
+}
+
+function signedKey(signature) {
+  return `signed:${hashToken(signature)}`;
 }
 
 function isPlausibleToken(token) {
