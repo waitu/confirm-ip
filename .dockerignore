@@ -1,0 +1,8 @@
+.git
+.env
+data
+out
+test
+scripts
+README.md
+run-test.ps1

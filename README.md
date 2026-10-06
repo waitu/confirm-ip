@@ -74,6 +74,42 @@ Chỉ dành cho backend/admin, trả về danh sách để kiểm thử.
 6. IP trên localhost luôn là `127.0.0.1` hoặc `::1`. Muốn thấy IP Internet thật phải deploy API công khai.
 7. GeoIP chưa được bật ở bản này. Có thể thêm sau bằng database MaxMind hoặc dịch vụ tương đương.
 
+## Deploy bằng Docker trên VPS
+
+Clone source và tạo cấu hình riêng trên VPS:
+
+```bash
+git clone git@github.com:waitu/confirm-ip.git /root/confirm-ip
+cd /root/confirm-ip
+cp .env.example .env
+mkdir -p data
+chown 1000:1000 data
+chmod 700 data
+```
+
+Các giá trị production chính:
+
+```dotenv
+PORT=8787
+BASE_URL=https://confirm.forgedride.co
+ADMIN_API_KEY=mot-khoa-ngau-nhien-toi-thieu-32-byte
+STORE_REDIRECT_URL=https://forgedride.co/
+TOKEN_TTL_HOURS=168
+RETENTION_DAYS=90
+TRUST_PROXY=true
+DATA_FILE=/app/data/store.json
+```
+
+Khởi động và kiểm tra nội bộ:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml ps
+curl http://127.0.0.1:8787/health
+```
+
+Compose chỉ publish API tại `127.0.0.1:8787`. Không mở port 8787 trong UFW; Nginx sẽ nhận HTTPS trên port 443 và reverse proxy vào địa chỉ nội bộ này.
+
 ## Lưu ý quyền riêng tư và độ chính xác
 
 IP là dữ liệu cá nhân ở nhiều khu vực pháp lý và GeoIP chỉ cho vị trí gần đúng. Nội dung test dùng một checkbox minh bạch; trước khi dùng production, hãy cập nhật privacy policy, mục đích xử lý, thời hạn lưu và cơ sở pháp lý phù hợp nơi bạn bán hàng. Không nên coi việc khách bấm một link không có thông báo là đồng ý marketing.

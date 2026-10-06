@@ -1,0 +1,22 @@
+services:
+  confirm-ip:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: confirm-ip
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./data:/app/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
