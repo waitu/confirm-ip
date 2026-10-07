@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { loadEnvFile, getConfig } from './env.mjs';
 import { getClientIp } from './ip.mjs';
 import { ConfirmationStore } from './store.mjs';
-import { autoConfirmPage, errorPage, NOTICE_VERSION } from './html.mjs';
+import { autoConfirmPage, errorPage, storeRedirectPage, NOTICE_VERSION } from './html.mjs';
 import { verifyOrderLink } from './signature.mjs';
 
 loadEnvFile();
@@ -173,8 +173,12 @@ function setSecurityHeaders(res) {
 }
 
 function redirect(res, location) {
-  res.writeHead(303, { Location: location, 'Cache-Control': 'no-store' });
-  res.end();
+  res.writeHead(200, {
+    'Content-Type': 'text/html; charset=utf-8',
+    'Refresh': `0;url=${location}`,
+    'Cache-Control': 'no-store'
+  });
+  res.end(storeRedirectPage(location));
 }
 
 function sendJson(res, status, value) {

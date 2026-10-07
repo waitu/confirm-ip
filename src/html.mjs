@@ -19,6 +19,17 @@ export function errorPage(title, message) {
   return pageShell(`<h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p>`);
 }
 
+export function storeRedirectPage(location) {
+  const safeLocation = escapeHtml(location);
+  const scriptLocation = JSON.stringify(String(location)).replaceAll('<', '\\u003c');
+  return `<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="0;url=${safeLocation}">
+<title>Đang chuyển về cửa hàng</title></head>
+<body><p>Đơn hàng đã được xác nhận. <a href="${safeLocation}">Tiếp tục đến cửa hàng</a>.</p>
+<script>window.location.replace(${scriptLocation});</script></body></html>`;
+}
+
 function pageShell(content) {
   return `<!doctype html>
 <html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

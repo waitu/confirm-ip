@@ -66,7 +66,7 @@ Kiểm tra token và trả trang auto-POST. Endpoint GET không ghi IP và khôn
 
 ### `POST /order-confirm`
 
-Ghi IP, user-agent, thời gian, phiên bản điều khoản, cơ sở xử lý `store_terms` và trạng thái `confirmed`, rồi redirect `303` về store.
+Ghi IP, user-agent, thời gian, phiên bản điều khoản, cơ sở xử lý `store_terms` và trạng thái `confirmed`, rồi trả trang chuyển hướng tương thích webview về store bằng JavaScript, meta refresh và link dự phòng.
 
 ### `GET /api/confirmations`
 

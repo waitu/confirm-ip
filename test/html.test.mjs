@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { autoConfirmPage } from '../src/html.mjs';
+import { autoConfirmPage, storeRedirectPage } from '../src/html.mjs';
 
 test('auto confirmation page posts signed fields without a consent checkbox', () => {
   const html = autoConfirmPage({
@@ -15,4 +15,11 @@ test('auto confirmation page posts signed fields without a consent checkbox', ()
   assert.match(html, /order-confirm-form'\)\.submit\(\)/);
   assert.doesNotMatch(html, /checkbox|name="consent"/);
   assert.match(html, /value="#1001"/);
+});
+
+test('store redirect page includes script, meta refresh, and manual fallback', () => {
+  const html = storeRedirectPage('https://forgedride.co/');
+  assert.match(html, /http-equiv="refresh"/);
+  assert.match(html, /window\.location\.replace\("https:\/\/forgedride\.co\/"\)/);
+  assert.match(html, /href="https:\/\/forgedride\.co\/"/);
 });
