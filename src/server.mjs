@@ -3,7 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { loadEnvFile, getConfig } from './env.mjs';
 import { getClientIp } from './ip.mjs';
 import { ConfirmationStore } from './store.mjs';
-import { confirmationPage, errorPage, NOTICE_VERSION } from './html.mjs';
+import { autoConfirmPage, errorPage, NOTICE_VERSION } from './html.mjs';
 import { verifyOrderLink } from './signature.mjs';
 
 loadEnvFile();
@@ -45,28 +45,21 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/order-confirm') {
       const confirmation = resolveConfirmation(Object.fromEntries(url.searchParams));
       if (!confirmation) return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn, bị thay đổi hoặc không tồn tại.'));
-      return sendHtml(res, 200, confirmationPage({
-        hiddenFields: confirmation.hiddenFields,
-        orderLabel: confirmation.orderLabel,
-        alreadyConfirmed: confirmation.alreadyConfirmed
-      }));
+      if (confirmation.alreadyConfirmed) return redirect(res, confirmation.redirectUrl);
+      return sendHtml(res, 200, autoConfirmPage({ hiddenFields: confirmation.hiddenFields }));
     }
 
     if (req.method === 'POST' && url.pathname === '/order-confirm') {
       const body = await readBody(req, 'form');
       const confirmation = resolveConfirmation(body);
       if (!confirmation) return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn, bị thay đổi hoặc không tồn tại.'));
-      if (body.consent !== 'yes') {
-        return sendHtml(res, 400, confirmationPage({
-          hiddenFields: confirmation.hiddenFields,
-          orderLabel: confirmation.orderLabel,
-          error: 'Bạn cần đồng ý trước khi xác nhận.'
-        }));
-      }
       const details = {
         ip: getClientIp(req, config.trustProxy),
         userAgent: String(req.headers['user-agent'] || '').slice(0, 500),
-        noticeVersion: NOTICE_VERSION
+        noticeVersion: NOTICE_VERSION,
+        consent: null,
+        legalBasis: 'store_terms',
+        confirmationMethod: 'email_link_auto_post'
       };
       const result = confirmation.type === 'opaque'
         ? await store.confirm(confirmation.token, details)
@@ -77,8 +70,7 @@ const server = createServer(async (req, res) => {
             config.signedLinkTtlMs
           );
       if (result.status === 'invalid') return sendHtml(res, 400, errorPage('Link không hợp lệ', 'Link đã hết hạn hoặc không tồn tại.'));
-      res.writeHead(303, { Location: result.entry.redirect_url, 'Cache-Control': 'no-store' });
-      return res.end();
+      return redirect(res, result.entry.redirect_url);
     }
 
     sendJson(res, 404, { error: 'Not found' });
@@ -113,7 +105,8 @@ function resolveConfirmation(input) {
       token,
       hiddenFields: { t: token },
       orderLabel: entry.order_id,
-      alreadyConfirmed: entry.status === 'confirmed'
+      alreadyConfirmed: entry.status === 'confirmed',
+      redirectUrl: entry.redirect_url
     };
   }
 
@@ -138,7 +131,8 @@ function resolveConfirmation(input) {
       sig: signed.signature
     },
     orderLabel: signed.orderName,
-    alreadyConfirmed: existing?.status === 'confirmed'
+    alreadyConfirmed: existing?.status === 'confirmed',
+    redirectUrl: existing?.redirect_url || config.redirectUrl
   };
 }
 
@@ -171,11 +165,16 @@ async function readBody(req, type) {
 }
 
 function setSecurityHeaders(res) {
-  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+}
+
+function redirect(res, location) {
+  res.writeHead(303, { Location: location, 'Cache-Control': 'no-store' });
+  res.end();
 }
 
 function sendJson(res, status, value) {

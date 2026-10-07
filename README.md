@@ -1,8 +1,8 @@
 # API xác nhận đơn hàng và ghi nhận IP
 
-Bản thử nghiệm không cần cài package. API tạo một token ngẫu nhiên, chỉ lưu SHA-256 của token, hiển thị trang xin xác nhận rõ ràng và chỉ ghi IP khi khách gửi form `POST`.
+Bản thử nghiệm không cần cài package. API tạo một token ngẫu nhiên, chỉ lưu SHA-256 của token và ghi IP khi trình duyệt tự gửi form `POST` sau khi khách bấm link email.
 
-Production hỗ trợ link HMAC do Shopify Liquid tự tạo từ `id`, `created_at` và `name`. Backend kiểm tra chữ ký và thời hạn trước khi hiển thị hoặc ghi nhận xác nhận; thay đổi bất kỳ tham số nào đều làm link vô hiệu.
+Production hỗ trợ link HMAC do Shopify Liquid tự tạo từ `id`, `created_at` và `name`. Backend kiểm tra chữ ký và thời hạn, trả một form auto-POST không có checkbox, ghi nhận xác nhận rồi chuyển về store. Việc tách GET và POST giúp giảm trường hợp link scanner chỉ đọc URL nhưng vô tình tạo xác nhận; thay đổi bất kỳ tham số nào đều làm link vô hiệu.
 
 ## Chạy thử trên máy
 
@@ -62,11 +62,11 @@ Kết quả gồm `confirmation_url` và `expires_at`.
 
 ### `GET /order-confirm?t=...`
 
-Kiểm tra token và hiển thị trang xác nhận. Endpoint GET không ghi IP và không thay đổi trạng thái đơn để tránh bot/link scanner trong hệ thống email tự xác nhận.
+Kiểm tra token và trả trang auto-POST. Endpoint GET không ghi IP và không thay đổi trạng thái đơn để tránh bot/link scanner chỉ quét URL tự xác nhận.
 
 ### `POST /order-confirm`
 
-Sau thao tác đồng ý rõ ràng của khách, ghi IP, user-agent, thời gian, phiên bản nội dung thông báo và trạng thái `confirmed`, rồi redirect `303` về store.
+Ghi IP, user-agent, thời gian, phiên bản điều khoản, cơ sở xử lý `store_terms` và trạng thái `confirmed`, rồi redirect `303` về store.
 
 ### `GET /api/confirmations`
 

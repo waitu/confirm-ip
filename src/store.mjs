@@ -67,7 +67,9 @@ export class ConfirmationStore {
         confirmed_at: new Date().toISOString(),
         ip: details.ip,
         user_agent: details.userAgent,
-        consent: true,
+        consent: details.consent,
+        legal_basis: details.legalBasis,
+        confirmation_method: details.confirmationMethod,
         notice_version: details.noticeVersion
       });
       return { status: 'confirmed', entry: structuredClone(entry) };
@@ -92,7 +94,9 @@ export class ConfirmationStore {
         confirmed_at: new Date().toISOString(),
         ip: details.ip,
         user_agent: details.userAgent,
-        consent: true,
+        consent: details.consent,
+        legal_basis: details.legalBasis,
+        confirmation_method: details.confirmationMethod,
         notice_version: details.noticeVersion,
         link_type: 'shopify_hmac'
       };

@@ -19,14 +19,18 @@ test('creates opaque token and confirms only once', async () => {
   });
   assert.equal(store.lookup(rawToken).status, 'pending');
   const first = await store.confirm(rawToken, {
-    ip: '203.0.113.10', userAgent: 'test', noticeVersion: 'v1'
+    ip: '203.0.113.10', userAgent: 'test', noticeVersion: 'v2',
+    consent: null, legalBasis: 'store_terms', confirmationMethod: 'email_link_auto_post'
   });
   const second = await store.confirm(rawToken, {
-    ip: '198.51.100.2', userAgent: 'other', noticeVersion: 'v1'
+    ip: '198.51.100.2', userAgent: 'other', noticeVersion: 'v2',
+    consent: null, legalBasis: 'store_terms', confirmationMethod: 'email_link_auto_post'
   });
   assert.equal(first.status, 'confirmed');
   assert.equal(second.status, 'already_confirmed');
   assert.equal(second.entry.ip, '203.0.113.10');
+  assert.equal(second.entry.legal_basis, 'store_terms');
+  assert.equal(second.entry.consent, null);
   const disk = await readFile(file, 'utf8');
   assert.equal(disk.includes(rawToken), false);
 });
